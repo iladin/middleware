@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { HttpsProxyAgent } from 'https-proxy-agent'; // Import the agent
 
 import { Endpoint, nullSchema } from '@/api-helpers/global';
 
@@ -83,8 +84,14 @@ function getProjectVersionInfo(): ProjectVersionInfo {
 
 async function fetchDockerHubTags(): Promise<TagCompressed[]> {
   const dockerHubUrl = `https://hub.docker.com/v2/repositories/${dockerRepoName}/tags/`;
-  const response = await axios.get<DockerHubAPIResponse>(dockerHubUrl);
+  // Explicitly create an agent that respects HTTPS_PROXY environment variable
+  const httpsProxy = process.env.HTTPS_PROXY || process.env.https_proxy;
+  const agent = httpsProxy ? new HttpsProxyAgent(httpsProxy) : undefined;
 
+  // Pass the agent to the axios config
+  const response = await axios.get<DockerHubAPIResponse>(dockerHubUrl, {
+    httpsAgent: agent
+  });
   return response.data.results.map((tag) => ({
     name: tag.name,
     digest: tag.images[0].digest,
